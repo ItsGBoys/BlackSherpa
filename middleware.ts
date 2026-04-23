@@ -1,3 +1,5 @@
+export const runtime = "nodejs";
+
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
 
@@ -10,7 +12,6 @@ export default auth((req) => {
     return NextResponse.redirect(new URL("/", nextUrl));
   }
 
-  // Role-based protection
   if (nextUrl.pathname.startsWith("/dashboard/users") && req.auth?.user?.role !== "SUPER_ADMIN") {
     return NextResponse.redirect(new URL("/dashboard", nextUrl));
   }
