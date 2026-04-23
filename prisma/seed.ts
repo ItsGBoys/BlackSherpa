@@ -1,150 +1,296 @@
-const { PrismaClient } = require("@prisma/client");
-const bcrypt = require("bcryptjs");
+import { JobStatus, PrismaClient, Priority, Role, TaskStatus } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
+
+const ROUTING_PRODUK_A = [
+  "PENGAMBILAN_BAHAN",
+  "POTONG",
+  "PRODUKSI",
+  "QC",
+  "SEAL",
+  "PACKING",
+  "DIKIRIM",
+];
+
+const WIP_MILESTONES = [
+  { phase: "PENGAMBILAN_BAHAN", percentage: 10, notes: "Pengambilan Bahan (10%)" },
+  { phase: "POTONG", percentage: 25, notes: "Potong selesai (25%)" },
+  { phase: "PRODUKSI", percentage: 55, notes: "Produksi selesai (55%)" },
+  { phase: "QC", percentage: 70, notes: "QC pass (70%)" },
+  { phase: "SEAL", percentage: 85, notes: "Seal selesai (85%)" },
+  { phase: "PACKING", percentage: 95, notes: "Packing selesai (95%)" },
+  { phase: "DIKIRIM", percentage: 100, notes: "Dikirim (100%)" },
+];
 
 async function main() {
   const hashedPassword = await bcrypt.hash("admin123", 10);
 
-  // 1. Super Admin
-  await prisma.user.upsert({
-    where: { email: "superadmin@blacksherpa.id" },
-    update: {},
-    create: {
+  const users: Array<{
+    email: string;
+    name: string;
+    role: Role;
+    division: string;
+  }> = [
+    {
       email: "superadmin@blacksherpa.id",
-      name: "Andi Sherpa",
-      password: hashedPassword,
+      name: "Super Admin",
       role: "SUPER_ADMIN",
-      division: "Management",
+      division: "Super Admin",
     },
-  });
-
-  // 2. Admin Produksi
-  await prisma.user.upsert({
-    where: { email: "admin.produksi@blacksherpa.id" },
-    update: {},
-    create: {
+    {
       email: "admin.produksi@blacksherpa.id",
-      name: "Budi Produksi",
-      password: hashedPassword,
+      name: "Admin Produksi",
       role: "ADMIN_PRODUKSI",
-      division: "Planning",
+      division: "Admin Produksi",
     },
-  });
-
-  // 3. PIC Potong & Gudang
-  await prisma.user.upsert({
-    where: { email: "potong@blacksherpa.id" },
-    update: {},
-    create: {
-      email: "potong@blacksherpa.id",
-      name: "Citra Potong",
-      password: hashedPassword,
+    {
+      email: "gudang@blacksherpa.id",
+      name: "PIC Gudang",
       role: "PIC_POTONG_GUDANG",
-      division: "Potong",
+      division: "Gudang",
     },
-  });
-
-  // 4. PIC Produksi
-  await prisma.user.upsert({
-    where: { email: "produksi@blacksherpa.id" },
-    update: {},
-    create: {
+    {
+      email: "potong@blacksherpa.id",
+      name: "PIC Potong",
+      role: "PIC_POTONG_GUDANG",
+      division: "PIC Potong",
+    },
+    {
       email: "produksi@blacksherpa.id",
-      name: "Dewi Jahit",
-      password: hashedPassword,
+      name: "PIC Produksi",
       role: "PIC_PRODUKSI",
-      division: "Produksi",
+      division: "PIC Produksi",
     },
-  });
-
-  // 5. PIC QC
-  await prisma.user.upsert({
-    where: { email: "qc@blacksherpa.id" },
-    update: {},
-    create: {
+    {
       email: "qc@blacksherpa.id",
-      name: "Eko Quality",
-      password: hashedPassword,
+      name: "PIC QC",
       role: "PIC_QC",
-      division: "QC",
+      division: "PIC QC",
     },
-  });
-
-  // 6. PIC Seal
-  await prisma.user.upsert({
-    where: { email: "seal@blacksherpa.id" },
-    update: {},
-    create: {
+    {
       email: "seal@blacksherpa.id",
-      name: "Fajar Seal",
-      password: hashedPassword,
+      name: "PIC Seal",
       role: "PIC_SEAL",
-      division: "Seal",
+      division: "PIC Seal",
     },
-  });
-
-  // 7. PIC Pengiriman
-  await prisma.user.upsert({
-    where: { email: "pengiriman@blacksherpa.id" },
-    update: {},
-    create: {
+    {
       email: "pengiriman@blacksherpa.id",
-      name: "Gita Kirim",
-      password: hashedPassword,
+      name: "PIC Pengiriman",
       role: "PIC_PENGIRIMAN",
-      division: "Pengiriman",
+      division: "PIC Pengiriman",
     },
-  });
+  ];
 
-  // Seed some materials
-  await prisma.material.createMany({
-    data: [
-      { name: "Ripstop Nylon 20D", unit: "meter", stock: 120, minStock: 50, pricePerUnit: 85000 },
-      { name: "Silnylon 15D", unit: "meter", stock: 45, minStock: 30, pricePerUnit: 125000 },
-      { name: "DAC Featherlite Pole", unit: "set", stock: 60, minStock: 25, pricePerUnit: 450000 },
-      { name: "YKK zipper 5m", unit: "pcs", stock: 200, minStock: 100, pricePerUnit: 35000 },
-      { name: "Dacron fabric", unit: "meter", stock: 80, minStock: 40, pricePerUnit: 95000 },
-    ],
-    skipDuplicates: true,
-  });
-
-  // Seed some products
-  const existingProduct = await prisma.product.findUnique({ where: { sku: "BS-TUL2P-S" } });
-  if (!existingProduct) {
-    await prisma.product.create({
-      data: {
-        name: "Tenda Ultralight 2P Saphire",
-        sku: "BS-TUL2P-S",
-        category: "Tenda",
-        routing: ["POTONG", "PRODUKSI", "QC", "SEAL", "SHIPPING"],
-        bom: {
-          create: [
-            { materialId: (await prisma.material.findFirst({ where: { name: "Ripstop Nylon 20D" } }))?.id || "", qtyPerUnit: 4, unit: "meter" },
-            { materialId: (await prisma.material.findFirst({ where: { name: "DAC Featherlite Pole" } }))?.id || "", qtyPerUnit: 2, unit: "set" },
-          ],
-        },
+  for (const user of users) {
+    await prisma.user.upsert({
+      where: { email: user.email },
+      update: {
+        name: user.name,
+        password: hashedPassword,
+        role: user.role,
+        division: user.division,
+      },
+      create: {
+        email: user.email,
+        name: user.name,
+        password: hashedPassword,
+        role: user.role,
+        division: user.division,
       },
     });
   }
 
-  console.log("✅ Seed completed! All 7 division accounts created.");
-  console.log("");
-  console.log("📋 ACCOUNT CREDENTIALS:");
-  console.log("=".repeat(50));
-  console.log("1. SUPER_ADMIN      | superadmin@blacksherpa.id    | admin123");
-  console.log("2. ADMIN_PRODUKSI   | admin.produksi@blacksherpa.id | admin123");
-  console.log("3. PIC_POTONG_GUDANG| potong@blacksherpa.id        | admin123");
-  console.log("4. PIC_PRODUKSI     | produksi@blacksherpa.id      | admin123");
-  console.log("5. PIC_QC           | qc@blacksherpa.id            | admin123");
-  console.log("6. PIC_SEAL         | seal@blacksherpa.id          | admin123");
-  console.log("7. PIC_PENGIRIMAN   | pengiriman@blacksherpa.id    | admin123");
-  console.log("=".repeat(50));
+  const materials = [
+    {
+      key: "kain_utama",
+      name: "Kain Utama Produk A",
+      unit: "meter",
+      stock: 45,
+      minStock: 30,
+      pricePerUnit: 95000,
+    },
+    {
+      key: "lapisan_dalam",
+      name: "Lapisan Dalam Produk A",
+      unit: "meter",
+      stock: 28,
+      minStock: 20,
+      pricePerUnit: 70000,
+    },
+    {
+      key: "ritsleting",
+      name: "Ritsleting Produk A",
+      unit: "pcs",
+      stock: 60,
+      minStock: 40,
+      pricePerUnit: 18000,
+    },
+    {
+      key: "benang",
+      name: "Benang Jahit Produk A",
+      unit: "roll",
+      stock: 12,
+      minStock: 10,
+      pricePerUnit: 25000,
+    },
+    {
+      key: "kemasan",
+      name: "Kemasan Produk A",
+      unit: "pcs",
+      stock: 40,
+      minStock: 25,
+      pricePerUnit: 5000,
+    },
+  ];
+
+  const materialMap: Record<string, string> = {};
+  for (const material of materials) {
+    const seededMaterial = await prisma.material.upsert({
+      where: { id: `mat-produk-a-${material.key}` },
+      update: {
+        name: material.name,
+        unit: material.unit,
+        stock: material.stock,
+        minStock: material.minStock,
+        pricePerUnit: material.pricePerUnit,
+      },
+      create: {
+        id: `mat-produk-a-${material.key}`,
+        name: material.name,
+        unit: material.unit,
+        stock: material.stock,
+        minStock: material.minStock,
+        pricePerUnit: material.pricePerUnit,
+      },
+    });
+    materialMap[material.key] = seededMaterial.id;
+  }
+
+  const productA = await prisma.product.upsert({
+    where: { sku: "PRODUK-A-001" },
+    update: {
+      name: "Produk A",
+      category: "Manufaktur",
+      routing: ROUTING_PRODUK_A,
+    },
+    create: {
+      id: "prod-produk-a-001",
+      name: "Produk A",
+      sku: "PRODUK-A-001",
+      category: "Manufaktur",
+      routing: ROUTING_PRODUK_A,
+    },
+  });
+
+  const bomItems = [
+    { key: "kain_utama", qtyPerUnit: 2.5, unit: "meter" },
+    { key: "lapisan_dalam", qtyPerUnit: 1.25, unit: "meter" },
+    { key: "ritsleting", qtyPerUnit: 1, unit: "pcs" },
+    { key: "benang", qtyPerUnit: 0.2, unit: "roll" },
+    { key: "kemasan", qtyPerUnit: 1, unit: "pcs" },
+  ];
+
+  for (const item of bomItems) {
+    await prisma.bOM.upsert({
+      where: { id: `bom-produk-a-${item.key}` },
+      update: {
+        productId: productA.id,
+        materialId: materialMap[item.key],
+        qtyPerUnit: item.qtyPerUnit,
+        unit: item.unit,
+      },
+      create: {
+        id: `bom-produk-a-${item.key}`,
+        productId: productA.id,
+        materialId: materialMap[item.key],
+        qtyPerUnit: item.qtyPerUnit,
+        unit: item.unit,
+      },
+    });
+  }
+
+  const jobOrder = await prisma.jobOrder.upsert({
+    where: { id: "jo-produk-a-routing" },
+    update: {
+      productId: productA.id,
+      productName: productA.name,
+      qty: 20,
+      status: JobStatus.IN_PROGRESS,
+      priority: Priority.HIGH,
+      progress: 10,
+      wipPhase: "PENGAMBILAN_BAHAN",
+    },
+    create: {
+      id: "jo-produk-a-routing",
+      productId: productA.id,
+      productName: productA.name,
+      qty: 20,
+      status: JobStatus.IN_PROGRESS,
+      priority: Priority.HIGH,
+      progress: 10,
+      wipPhase: "PENGAMBILAN_BAHAN",
+    },
+  });
+
+  for (const milestone of WIP_MILESTONES) {
+    await prisma.wIPLog.upsert({
+      where: { id: `wip-produk-a-${milestone.phase.toLowerCase()}` },
+      update: {
+        jobId: jobOrder.id,
+        phase: milestone.phase,
+        percentage: milestone.percentage,
+        notes: milestone.notes,
+      },
+      create: {
+        id: `wip-produk-a-${milestone.phase.toLowerCase()}`,
+        jobId: jobOrder.id,
+        phase: milestone.phase,
+        percentage: milestone.percentage,
+        notes: milestone.notes,
+      },
+    });
+  }
+
+  const assigneeByPhase = {
+    POTONG: "potong@blacksherpa.id",
+    PRODUKSI: "produksi@blacksherpa.id",
+    QC: "qc@blacksherpa.id",
+    SEAL: "seal@blacksherpa.id",
+    PACKING: "pengiriman@blacksherpa.id",
+    DIKIRIM: "pengiriman@blacksherpa.id",
+  };
+
+  for (const milestone of WIP_MILESTONES) {
+    const assigneeEmail = assigneeByPhase[milestone.phase] || "gudang@blacksherpa.id";
+    const assignee = await prisma.user.findUnique({ where: { email: assigneeEmail } });
+
+    await prisma.task.upsert({
+      where: { id: `task-produk-a-${milestone.phase.toLowerCase()}` },
+      update: {
+        jobId: jobOrder.id,
+        phase: milestone.phase,
+        status: milestone.percentage <= 10 ? TaskStatus.IN_PROGRESS : TaskStatus.PENDING,
+        assignedTo: assignee?.id || null,
+        notes: `Tahap ${milestone.phase} pada ${milestone.percentage}%`,
+      },
+      create: {
+        id: `task-produk-a-${milestone.phase.toLowerCase()}`,
+        jobId: jobOrder.id,
+        phase: milestone.phase,
+        status: milestone.percentage <= 10 ? TaskStatus.IN_PROGRESS : TaskStatus.PENDING,
+        assignedTo: assignee?.id || null,
+        notes: `Tahap ${milestone.phase} pada ${milestone.percentage}%`,
+      },
+    });
+  }
+
+  console.log("Seed completed: user, produk, BOM, routing, dan WIP Produk A sudah siap.");
 }
 
 main()
-  .catch((e) => {
-    console.error("❌ Seed error:", e);
+  .catch((error) => {
+    console.error("Seed error:", error);
     process.exit(1);
   })
   .finally(async () => {

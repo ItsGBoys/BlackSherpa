@@ -10,6 +10,9 @@ import CreateJobDialog from "./CreateJobDialog";
 export default async function JobOrdersPage() {
   const session = await auth();
   if (!session) redirect("/");
+  if (!["SUPER_ADMIN", "ADMIN_PRODUKSI"].includes(session.user.role || "")) {
+    redirect("/dashboard");
+  }
 
   const jobs = await prisma.jobOrder.findMany({
     include: {

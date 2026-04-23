@@ -1,11 +1,25 @@
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
 import { Package, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ClientMotionDiv from "@/components/ClientMotionDiv";
 
 export default async function ProductsPage() {
+  const session = await auth();
+  if (!session) redirect("/");
+  if (session.user.role !== "SUPER_ADMIN") {
+    redirect("/dashboard");
+  }
+
   const products = await prisma.product.findMany({
-    include: { bom: true },
+    include: {
+      bom: {
+        include: {
+          material: true,
+        },
+      },
+    },
   });
 
   return (
@@ -32,7 +46,7 @@ export default async function ProductsPage() {
               <p className="text-xs font-bold text-muted-foreground uppercase">BOM Summary</p>
               {p.bom.slice(0, 3).map((b: any) => (
                 <div key={b.id} className="flex justify-between text-xs">
-                  <span>Material ID: {b.materialId.slice(-4)}</span>
+                  <span>{b.material.name}</span>
                   <span className="font-mono">{b.qtyPerUnit} {b.unit}</span>
                 </div>
               ))}

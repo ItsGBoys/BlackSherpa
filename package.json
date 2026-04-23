@@ -8,6 +8,8 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "smoke:full": "node scripts/full-flow-smoke.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "postinstall": "prisma generate"
@@ -71,7 +73,7 @@
     "zod": "^3.25.76"
   },
   "prisma": {
-    "seed": "node prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
@@ -90,7 +92,9 @@
     "postcss": "^8.5.6",
     "prisma": "^6.4.1",
     "tailwindcss": "^3.4.17",
+    "tsx": "^4.21.0",
     "typescript": "^5.8.3",
+    "typescript-eslint": "^8.59.0",
     "vitest": "^3.2.4"
   }
 }

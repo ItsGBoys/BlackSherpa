@@ -1,19 +1,45 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { LucideIcon } from "lucide-react";
+import {
+  AlertTriangle,
+  ClipboardList,
+  Database,
+  DollarSign,
+  Factory,
+  ShieldCheck,
+  TrendingUp,
+  Truck,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
+
+const ICON_MAP = {
+  DOLLAR_SIGN: DollarSign,
+  USERS: Users,
+  TRENDING_UP: TrendingUp,
+  ALERT_TRIANGLE: AlertTriangle,
+  CLIPBOARD_LIST: ClipboardList,
+  FACTORY: Factory,
+  SHIELD_CHECK: ShieldCheck,
+  TRUCK: Truck,
+  DATABASE: Database,
+} as const;
+
+type StatsIconKey = keyof typeof ICON_MAP;
 
 interface StatsCardProps {
   title: string;
   value: string | number;
   subtitle?: string;
-  icon: LucideIcon;
+  icon: StatsIconKey;
   trend?: { value: number; positive: boolean };
   variant?: "mint" | "orange" | "default";
   delay?: number;
 }
 
-export default function StatsCard({ title, value, subtitle, icon: Icon, trend, variant = "default", delay = 0 }: StatsCardProps) {
+export default function StatsCard({ title, value, subtitle, icon, trend, variant = "default", delay = 0 }: StatsCardProps) {
+  const Icon: LucideIcon = ICON_MAP[icon];
   const glowClass = variant === "mint" ? "glow-mint" : variant === "orange" ? "glow-orange" : "";
   const iconColor = variant === "mint" ? "text-primary" : variant === "orange" ? "text-secondary" : "text-muted-foreground";
 

@@ -37,7 +37,7 @@ const allNavItems = [
   { label: "Job Orders", icon: ClipboardList, path: "/dashboard/jobs", roles: ["SUPER_ADMIN", "ADMIN_PRODUKSI"] },
   { label: "Penjadwalan", icon: Calendar, path: "/dashboard/schedule", roles: ["SUPER_ADMIN", "ADMIN_PRODUKSI"] },
   { label: "Master Produk", icon: Package, path: "/dashboard/products", roles: ["SUPER_ADMIN"] },
-  { label: "Bahan Baku", icon: Database, path: "/dashboard/materials", roles: ["SUPER_ADMIN", "ADMIN_PRODUKSI", "PIC_POTONG_GUDANG"] },
+  { label: "Bahan Baku", icon: Database, path: "/dashboard/warehouse", roles: ["SUPER_ADMIN", "ADMIN_PRODUKSI", "PIC_POTONG_GUDANG"] },
   { label: "Potong", icon: Scissors, path: "/dashboard/cutting", roles: ["SUPER_ADMIN", "ADMIN_PRODUKSI", "PIC_POTONG_GUDANG"] },
   { label: "Produksi", icon: Factory, path: "/dashboard/production", roles: ["SUPER_ADMIN", "ADMIN_PRODUKSI", "PIC_PRODUKSI"] },
   { label: "Quality Control", icon: ShieldCheck, path: "/dashboard/qc", roles: ["SUPER_ADMIN", "ADMIN_PRODUKSI", "PIC_QC"] },
@@ -98,7 +98,7 @@ export default function Sidebar({ user }: { user: any }) {
           const isActive = pathname === item.path;
           return (
             <Link
-              key={item.path}
+              key={`${item.path}-${item.label}`}
               href={item.path}
               className={`group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 relative ${
                 isActive ? "bg-primary/10 text-primary" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"

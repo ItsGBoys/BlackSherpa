@@ -14,6 +14,12 @@ interface Job {
 const priorityColors = { HIGH: "text-secondary", MEDIUM: "text-primary", LOW: "text-muted-foreground" };
 const priorityLabels = { HIGH: "Tinggi", MEDIUM: "Sedang", LOW: "Rendah" };
 
+function macroPhase(wipPhase?: string | null) {
+  if (!wipPhase || wipPhase === "PENGAMBILAN_BAHAN") return "Pengambilan Bahan Baku";
+  if (wipPhase === "DIKIRIM") return "Selesai";
+  return "Proses Bahan Baku";
+}
+
 export default function ProductionProgress({ jobs = [] }: { jobs?: any[] }) {
   // Use mock data if no jobs provided for dashboard visualization
   const displayJobs = jobs.length > 0 ? jobs.slice(0, 4) : [
@@ -52,7 +58,7 @@ export default function ProductionProgress({ jobs = [] }: { jobs?: any[] }) {
                 <span className={`text-xs font-medium ${priorityColors[job.priority as keyof typeof priorityColors]}`}>
                   {priorityLabels[job.priority as keyof typeof priorityLabels]}
                 </span>
-                <p className="text-xs text-muted-foreground">{job.qty} unit · {job.wipPhase || "BAHAN"}</p>
+                <p className="text-xs text-muted-foreground">{job.qty} unit · {macroPhase(job.wipPhase)}</p>
               </div>
             </div>
 
@@ -70,7 +76,7 @@ export default function ProductionProgress({ jobs = [] }: { jobs?: any[] }) {
                 animate={{ width: `${job.progress}%` }}
                 transition={{ duration: 1, delay: 0.5 + i * 0.15, ease: "easeOut" }}
               />
-              {[10, 25, 55, 85, 100].map((marker) => (
+              {[10, 25, 55, 70, 85, 95, 100].map((marker) => (
                 <div
                   key={marker}
                   className="absolute top-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-muted-foreground/30"

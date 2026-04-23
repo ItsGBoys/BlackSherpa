@@ -12,6 +12,7 @@ import {
   Select, SelectContent, SelectItem, 
   SelectTrigger, SelectValue 
 } from "@/components/ui/select";
+import { Priority } from "@prisma/client";
 import { createJobOrder } from "@/app/actions/job-actions";
 import { toast } from "sonner";
 
@@ -25,11 +26,18 @@ export default function CreateJobDialog({ children, products }: { children: Reac
     
     const formData = new FormData(event.currentTarget);
     try {
-      await createJobOrder(formData);
+      await createJobOrder({
+        productId: formData.get("productId") as string,
+        quantity: Number(formData.get("qty")),
+        startDate: formData.get("plannedStart") as string,
+        targetDate: formData.get("plannedEnd") as string,
+        priority: formData.get("priority") as Priority,
+      });
       setOpen(false);
       toast.success("Berhasil", { description: "Job Order baru telah dibuat" });
     } catch (error) {
-      toast.error("Gagal", { description: "Gagal membuat Job Order" });
+      const message = error instanceof Error ? error.message : "Gagal membuat Job Order";
+      toast.error("Gagal", { description: message });
     } finally {
       setLoading(false);
     }

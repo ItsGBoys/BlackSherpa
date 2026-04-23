@@ -2,9 +2,12 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useRouter } from "next/navigation";
 import { ClipboardList, ChevronDown, ChevronUp, Package, Calendar } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { cancelJobOrder, releaseJobOrder } from "@/app/actions/job-actions";
+import { toast } from "sonner";
 
 const statusColors: Record<string, string> = {
   DRAFT: "bg-muted text-muted-foreground",
@@ -15,17 +18,47 @@ const statusColors: Record<string, string> = {
 };
 
 const PHASE_LABELS: Record<string, string> = {
-  BAHAN: "Bahan",
+  PENGAMBILAN_BAHAN: "Bahan",
   POTONG: "Potong",
   PRODUKSI: "Produksi",
   QC: "QC",
   SEAL: "Seal",
-  SHIPPING: "Kirim",
+  PACKING: "Packing",
+  DIKIRIM: "Kirim",
 };
+
+function macroPhase(wipPhase?: string | null) {
+  if (!wipPhase || wipPhase === "PENGAMBILAN_BAHAN") return "Pengambilan Bahan Baku";
+  if (wipPhase === "DIKIRIM") return "Selesai";
+  return "Proses Bahan Baku";
+}
 
 export default function JobOrderList({ initialJobs }: { initialJobs: any[] }) {
   const [jobs] = useState(initialJobs);
   const [expandedJob, setExpandedJob] = useState<string | null>(null);
+  const router = useRouter();
+
+  const onRelease = async (jobId: string) => {
+    try {
+      await releaseJobOrder(jobId);
+      toast.success("Berhasil", { description: "Job order sudah direlease" });
+      router.refresh();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal release job order";
+      toast.error("Gagal", { description: message });
+    }
+  };
+
+  const onCancel = async (jobId: string) => {
+    try {
+      await cancelJobOrder(jobId);
+      toast.success("Berhasil", { description: "Job order dibatalkan" });
+      router.refresh();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gagal membatalkan job order";
+      toast.error("Gagal", { description: message });
+    }
+  };
 
   return (
     <div className="space-y-3">
@@ -61,6 +94,7 @@ export default function JobOrderList({ initialJobs }: { initialJobs: any[] }) {
               <div className="text-right">
                 <p className="text-xs text-muted-foreground">Progress</p>
                 <p className="text-lg font-heading font-bold text-primary">{Math.round(job.progress)}%</p>
+                <p className="text-[10px] text-muted-foreground">{macroPhase(job.wipPhase)}</p>
               </div>
               {expandedJob === job.id ? <ChevronUp size={16} className="text-muted-foreground" /> : <ChevronDown size={16} className="text-muted-foreground" />}
             </div>
@@ -95,8 +129,24 @@ export default function JobOrderList({ initialJobs }: { initialJobs: any[] }) {
                     <div className="p-3 rounded-xl bg-muted/20 border border-border">
                       <p className="text-[10px] font-heading font-bold text-muted-foreground uppercase tracking-widest mb-2">Kontrol</p>
                       <div className="flex gap-2">
-                        <Button size="sm" variant="outline" className="h-7 text-[10px] font-bold">RELEASE</Button>
-                        <Button size="sm" variant="ghost" className="h-7 text-[10px] font-bold text-destructive">CANCEL</Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-[10px] font-bold"
+                          disabled={job.status !== "DRAFT"}
+                          onClick={() => onRelease(job.id)}
+                        >
+                          RELEASE
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-[10px] font-bold text-destructive"
+                          disabled={job.status === "COMPLETED" || job.status === "CANCELLED"}
+                          onClick={() => onCancel(job.id)}
+                        >
+                          CANCEL
+                        </Button>
                       </div>
                     </div>
                   </div>

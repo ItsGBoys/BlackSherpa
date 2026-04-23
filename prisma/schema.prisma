@@ -4,10 +4,7 @@ generator client {
 
 datasource db {
   provider  = "postgresql"
-  // Use connection pooling for serverless (Vercel)
-  // DATABASE_URL should point to your pooled connection (e.g., Supabase transaction mode)
   url       = env("DATABASE_URL")
-  // directUrl should point to the direct connection (e.g., Supabase session mode)
   directUrl = env("DIRECT_URL")
 }
 

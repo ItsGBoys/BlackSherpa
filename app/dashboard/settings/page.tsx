@@ -1,7 +1,15 @@
 import { Settings, Bell, Shield, Smartphone } from "lucide-react";
 import ClientMotionDiv from "@/components/ClientMotionDiv";
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const session = await auth();
+  if (!session) redirect("/");
+  if (session.user.role !== "SUPER_ADMIN") {
+    redirect("/dashboard");
+  }
+
   return (
     <div className="space-y-6">
       <ClientMotionDiv>
@@ -20,12 +28,12 @@ export default function SettingsPage() {
           </div>
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground uppercase font-bold">Status Koneksi</p>
-            <p className="text-sm text-primary font-medium flex items-center gap-2">
-              <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-              Connected (Ready)
+            <p className="text-sm text-muted-foreground font-medium flex items-center gap-2">
+              <span className="w-2 h-2 bg-muted-foreground rounded-full" />
+              Nonaktif (Mode Internal)
             </p>
           </div>
-          <p className="text-xs text-muted-foreground">Template notifikasi otomatis aktif untuk Release JO, Low Stock, dan QC Fail.</p>
+          <p className="text-xs text-muted-foreground">Integrasi eksternal (WA/OTP) sengaja dinonaktifkan sementara sesuai scope implementasi internal.</p>
         </div>
 
         <div className="p-6 rounded-xl border border-border bg-card space-y-4">

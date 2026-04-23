@@ -2,14 +2,18 @@
 
 import { motion } from "framer-motion";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { CheckCircle2, Clock, AlertTriangle, RotateCcw, Camera, Box, ChevronRight, Info, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import TentIcon from "@/components/TentIcon";
 import { toast } from "sonner";
+import { TaskStatus } from "@prisma/client";
+import { updateTaskStatus } from "@/app/actions/job-actions";
 
 interface DivisionPageProps {
   phase: string;
@@ -33,39 +37,68 @@ const statusLabels: Record<string, string> = {
 };
 
 const PHASE_LABELS: Record<string, string> = {
-  BAHAN: "Pengambilan Bahan",
+  PENGAMBILAN_BAHAN: "Pengambilan Bahan",
   POTONG: "Potong",
   PRODUKSI: "Produksi",
   QC: "Quality Control",
   SEAL: "Seal",
-  SHIPPING: "Pengiriman",
+  PACKING: "Packing",
+  DIKIRIM: "Pengiriman",
 };
 
 export default function DivisionPage({ phase, title, icon, jobs: initialJobs }: DivisionPageProps) {
-  const [jobs, setJobs] = useState(initialJobs);
+  const jobs = initialJobs;
+  const router = useRouter();
   const [selectedJob, setSelectedJob] = useState<any | null>(null);
   const [showActionDialog, setShowActionDialog] = useState(false);
   const [notes, setNotes] = useState("");
   const [qcStatus, setQcStatus] = useState<"pass" | "fail">("pass");
   const [loading, setLoading] = useState(false);
+  const [actualConsumptions, setActualConsumptions] = useState<Record<string, number>>({});
 
   const handleAction = (job: any) => {
     setSelectedJob(job);
+    if (phase === "PENGAMBILAN_BAHAN" && job?.product?.bom) {
+      const defaults: Record<string, number> = {};
+      for (const bomItem of job.product.bom) {
+        defaults[bomItem.materialId] = Number((job.qty * bomItem.qtyPerUnit).toFixed(4));
+      }
+      setActualConsumptions(defaults);
+    }
     setShowActionDialog(true);
   };
 
   const onConfirmUpdate = async () => {
     if (!selectedJob) return;
     setLoading(true);
-    
-    // Here we would call a server action to update the database
-    // For now, let's simulate the success
+
     try {
+      const currentTask = selectedJob.tasks.find((t: any) => t.phase === phase);
+      if (!currentTask) throw new Error("Task tidak ditemukan");
+
+      const isQcFail = phase === "QC" && currentTask.status === TaskStatus.IN_PROGRESS && qcStatus === "fail";
+      const nextStatus: TaskStatus = isQcFail
+        ? TaskStatus.REWORK
+        : currentTask.status === TaskStatus.PENDING
+          ? TaskStatus.IN_PROGRESS
+          : TaskStatus.DONE;
+
+      const materialConsumptions =
+        phase === "PENGAMBILAN_BAHAN"
+          ? Object.entries(actualConsumptions).map(([materialId, actualQty]) => ({
+              materialId,
+              actualQty: Number(actualQty),
+            }))
+          : undefined;
+
+      await updateTaskStatus(selectedJob.id, phase, nextStatus, notes, materialConsumptions);
       toast.success("Berhasil", { description: "Progress telah diperbarui" });
       setShowActionDialog(false);
       setNotes("");
+      router.refresh();
     } catch (error) {
-      toast.error("Gagal", { description: "Gagal memperbarui progress" });
+      const message = error instanceof Error ? error.message : "Gagal memperbarui progress";
+      toast.error("Gagal", { description: message });
     } finally {
       setLoading(false);
     }
@@ -231,6 +264,40 @@ export default function DivisionPage({ phase, title, icon, jobs: initialJobs }: 
                     <XCircle size={18} />
                     <span className="font-bold">FAIL</span>
                   </button>
+                </div>
+              </div>
+            )}
+
+            {phase === "PENGAMBILAN_BAHAN" && selectedJob?.product?.bom?.length > 0 && (
+              <div className="space-y-3">
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Actual Consumption Bahan
+                </Label>
+                <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                  {selectedJob.product.bom.map((bomItem: any) => {
+                    const plannedQty = selectedJob.qty * bomItem.qtyPerUnit;
+                    return (
+                      <div key={bomItem.id} className="grid grid-cols-3 gap-2 items-center text-xs">
+                        <div className="col-span-2">
+                          <p className="font-medium">{bomItem.material.name}</p>
+                          <p className="text-muted-foreground">Planned: {plannedQty} {bomItem.unit}</p>
+                        </div>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={actualConsumptions[bomItem.materialId] ?? plannedQty}
+                          onChange={(event) =>
+                            setActualConsumptions((prev) => ({
+                              ...prev,
+                              [bomItem.materialId]: Number(event.target.value),
+                            }))
+                          }
+                          className="h-8 bg-muted/50 border-border"
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

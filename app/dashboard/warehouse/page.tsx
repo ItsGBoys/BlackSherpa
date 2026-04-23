@@ -1,23 +1,35 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
-import { motion } from "framer-motion";
 import { AlertTriangle, Package, Database } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import ClientMotionDiv from "@/components/ClientMotionDiv";
+import { getJobsByPhase } from "@/app/actions/job-actions";
+import DivisionPage from "@/components/dashboard/DivisionPage";
 
 export default async function WarehousePage() {
   const session = await auth();
   if (!session) redirect("/");
+  if (!["SUPER_ADMIN", "ADMIN_PRODUKSI", "PIC_POTONG_GUDANG"].includes(session.user.role || "")) {
+    redirect("/dashboard");
+  }
 
   const materials = await prisma.material.findMany({
     orderBy: { name: "asc" },
   });
+  const jobs = await getJobsByPhase("PENGAMBILAN_BAHAN");
 
   const lowStockItems = materials.filter((m) => m.stock <= m.minStock);
 
   return (
     <div className="space-y-6">
+      <DivisionPage
+        phase="PENGAMBILAN_BAHAN"
+        title="Divisi Gudang / Pengambilan Bahan"
+        icon={<Database className="h-6 w-6 text-primary" />}
+        jobs={jobs}
+      />
+
       <ClientMotionDiv>
         <div className="flex items-center gap-3 mb-1">
           <Package className="h-6 w-6 text-primary" />
