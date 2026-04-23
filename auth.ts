@@ -13,7 +13,7 @@ import { authConfig } from "./auth.config";
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   adapter: PrismaAdapter(prisma),
-  session: { strategy: "database" }, // Ensures real-time session tracking in database
+  session: { strategy: "jwt" },
   providers: [
     Credentials({
       async authorize(credentials) {
@@ -36,13 +36,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   callbacks: {
     ...authConfig.callbacks,
-    async session({ session, user }) {
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        token.role = (user as any).role;
+        token.division = (user as any).division;
+      }
+      return token;
+    },
+    async session({ session, token }) {
       if (session.user) {
-        session.user.id = user.id;
-        // @ts-ignore
-        session.user.role = user.role;
-        // @ts-ignore
-        session.user.division = user.division;
+        session.user.id = token.id as string;
+        (session.user as any).role = token.role;
+        (session.user as any).division = token.division;
       }
       return session;
     },
