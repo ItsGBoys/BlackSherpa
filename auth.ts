@@ -4,17 +4,16 @@ import { prisma } from "@/lib/prisma";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { authConfig } from "./auth.config";
 
 /**
  * Vercel + Supabase Production Setup
  * Using database session strategy with Prisma Adapter
  */
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
   adapter: PrismaAdapter(prisma),
   session: { strategy: "database" }, // Ensures real-time session tracking in database
-  pages: {
-    signIn: "/",
-  },
   providers: [
     Credentials({
       async authorize(credentials) {
@@ -36,6 +35,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
+    ...authConfig.callbacks,
     async session({ session, user }) {
       if (session.user) {
         session.user.id = user.id;
